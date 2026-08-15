@@ -13,7 +13,8 @@ object EnvironmentInstaller {
 
     fun isInstalled(context: Context): Boolean {
         val script = File(context.filesDir, "start-ubuntu.sh")
-        return script.exists()
+        val bash = File(context.filesDir, "ubuntu-fs/bin/bash")
+        return script.exists() && bash.exists()
     }
 
     fun install(context: Context, onProgress: (String) -> Unit) {
@@ -27,18 +28,41 @@ object EnvironmentInstaller {
                 rootfsDir.mkdirs()
             }
             
-            onProgress("Copying Ubuntu rootfs tarball...")
-            val tarballFile = File(filesDir, "ubuntu-rootfs.tar")
-            copyAsset(context, "ubuntu-rootfs.tar", tarballFile)
+            val assetNames = context.assets.list("") ?: emptyArray()
+            val assetName = if (assetNames.contains("ubuntu-rootfs.tar.gz")) {
+                "ubuntu-rootfs.tar.gz"
+            } else if (assetNames.contains("ubuntu-rootfs.tar")) {
+                "ubuntu-rootfs.tar"
+            } else {
+                "ubuntu-rootfs.tar.gz"
+            }
+
+            onProgress("Copying Ubuntu rootfs tarball ($assetName)...")
+            val tarballFile = File(filesDir, assetName)
+            copyAsset(context, assetName, tarballFile)
+
+            val tarFile = if (assetName.endsWith(".gz")) {
+                onProgress("Decompressing gzip archive...")
+                val decompressed = File(filesDir, "ubuntu-rootfs.tar")
+                java.util.zip.GZIPInputStream(tarballFile.inputStream().buffered()).use { gzIn ->
+                    decompressed.outputStream().buffered().use { tarOut ->
+                        gzIn.copyTo(tarOut)
+                    }
+                }
+                tarballFile.delete()
+                decompressed
+            } else {
+                tarballFile
+            }
 
             onProgress("Extracting Ubuntu rootfs (This may take a few minutes)...")
-            // Use Android's native tar. It will fail on chown/hardlinks but extract successfully.
             val process = ProcessBuilder(
-                "/system/bin/tar", "-xf", tarballFile.absolutePath, "-C", rootfsDir.absolutePath
+                "/system/bin/tar", "-xf", tarFile.absolutePath, "-C", rootfsDir.absolutePath
             ).redirectErrorStream(true).start()
 
             val output = process.inputStream.bufferedReader().readText()
             process.waitFor()
+            tarFile.delete()
 
             // Since Android's tar cannot create hard links or chown, it will exit with an error code.
             // We verify success by checking if a core file was extracted.
@@ -48,9 +72,6 @@ object EnvironmentInstaller {
                 return
             }
 
-            // Cleanup tarball
-            tarballFile.delete()
-
             // 2. Create start script
             onProgress("Creating startup scripts...")
             createStartScript(context, prootBinary)
@@ -58,7 +79,7 @@ object EnvironmentInstaller {
             // 3. Set up DNS
             val resolvConf = File(rootfsDir, "etc/resolv.conf")
             resolvConf.parentFile?.mkdirs()
-            resolvConf.writeText("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
+            resolvConf.writeText("nameserver 119.29.29.29\nnameserver 223.5.5.5\nnameserver 8.8.8.8\nnameserver 1.1.1.1\n")
 
             onProgress("Installation Complete!")
         } catch (e: Exception) {
@@ -67,20 +88,43 @@ object EnvironmentInstaller {
         }
     }
 
-    private fun createStartScript(context: Context, prootBinary: String) {
+    fun ensureStartScript(context: Context) {
+        val prootBinary = File(context.applicationInfo.nativeLibraryDir, "libproot.so").absolutePath
+        createStartScript(context, prootBinary)
+    }
+
+    fun createStartScript(context: Context, prootBinary: String) {
         val script = File(context.filesDir, "start-ubuntu.sh")
         val rootfs = File(context.filesDir, "ubuntu-fs").absolutePath
+        val tmpDir = File(context.filesDir, "tmp").absolutePath
+        val nativeLibDir = context.applicationInfo.nativeLibraryDir
+        val prootLoader = File(nativeLibDir, "libproot_loader.so").absolutePath
         
         val content = """
             #!/system/bin/sh
-            export PROOT_TMP_DIR=${context.filesDir.absolutePath}/tmp
-            mkdir -p ${context.filesDir.absolutePath}/tmp
-            
-            export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+            export PATH=/system/bin:/system/xbin
             export HOME=/root
             export TERM=xterm-256color
+            export PROOT_TMP_DIR=$tmpDir
+            export PROOT_LOADER=$prootLoader
             
-            exec $prootBinary --link2symlink -0 -r $rootfs -b /dev -b /proc -b /sys -w /root /bin/bash -l
+            mkdir -p $tmpDir
+            mkdir -p $rootfs/tmp
+            mkdir -p $rootfs/run/sshd
+            chmod 755 $rootfs/run/sshd 2>/dev/null || true
+            
+            PROOT_BIN="$prootBinary"
+            if [ ! -f "${'$'}PROOT_BIN" ]; then
+                if [ -f "$nativeLibDir/libproot.so" ]; then
+                    PROOT_BIN="$nativeLibDir/libproot.so"
+                fi
+            fi
+            
+            if [ ${'$'}# -gt 0 ]; then
+                exec "${'$'}PROOT_BIN" --link2symlink -0 -r $rootfs -b /dev -b /proc -b /sys -w /root /bin/bash "${'$'}@"
+            else
+                exec "${'$'}PROOT_BIN" --link2symlink -0 -r $rootfs -b /dev -b /proc -b /sys -w /root /bin/bash -l
+            fi
         """.trimIndent()
         
         script.writeText(content)

@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.example.ubuntuonandroid"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 28
         versionCode = 1
         versionName = "1.0"
         ndk {

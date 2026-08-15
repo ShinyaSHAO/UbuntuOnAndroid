@@ -49,7 +49,9 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     Handler(Looper.getMainLooper()).post {
-                        isInstalled = true
+                        if (EnvironmentInstaller.isInstalled(this@MainActivity)) {
+                            isInstalled = true
+                        }
                     }
                 }
             }
@@ -126,10 +128,38 @@ class MainActivity : ComponentActivity() {
                     override fun logStackTrace(tag: String, e: Exception) {}
                 })
 
-                val args = arrayOf(File(context.filesDir, "start-ubuntu.sh").absolutePath)
-                val env = arrayOf("HOME=" + context.filesDir.absolutePath, "TERM=xterm-256color")
+                EnvironmentInstaller.ensureStartScript(context)
+                val prootBinary = File(context.applicationInfo.nativeLibraryDir, "libproot.so").absolutePath
+                val rootfs = File(context.filesDir, "ubuntu-fs").absolutePath
+                val tmpDir = File(context.filesDir, "tmp").absolutePath
                 
-                val executablePath = "/system/bin/sh"
+                File(tmpDir).mkdirs()
+                File(rootfs, "tmp").mkdirs()
+                File(rootfs, "run/sshd").mkdirs()
+                
+                val prootLoader = File(context.applicationInfo.nativeLibraryDir, "libproot_loader.so").absolutePath
+                val executablePath = prootBinary
+                val args = arrayOf(
+                    prootBinary,
+                    "--link2symlink",
+                    "-0",
+                    "-r", rootfs,
+                    "-b", "/dev",
+                    "-b", "/proc",
+                    "-b", "/sys",
+                    "-w", "/root",
+                    "/bin/bash",
+                    "-l"
+                )
+                val env = arrayOf(
+                    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                    "HOME=/root",
+                    "TERM=xterm-256color",
+                    "TMPDIR=$tmpDir",
+                    "PROOT_TMP_DIR=$tmpDir",
+                    "PROOT_LOADER=$prootLoader",
+                    "LD_LIBRARY_PATH=" + context.applicationInfo.nativeLibraryDir
+                )
                 
                 val session = TerminalSession(
                     executablePath,
