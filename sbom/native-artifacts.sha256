@@ -1,0 +1,11 @@
+# Files tracked in this repository
+84475798e07c8174dbbfaec70a827fdb02f19ffa69a589380c13e7507fd0e731  app/src/main/jniLibs/arm64-v8a/libandroid-shmem.so
+c0cce6ea90191c4ea0c3e0dc8dcdf00f9df04d2f1eb2867bf10bf4de1c055c17  app/src/main/jniLibs/arm64-v8a/libproot.so
+44ef39c1e1a18c09f6e4c4b5d6f8bba82d30596598bd155ec162d05c5122ff04  app/src/main/jniLibs/arm64-v8a/libproot_loader.so
+3c9b207c0a6ea2896b7523e03f55d9ab0d9e88baa115d4c32b84058ff4246fbb  app/src/main/jniLibs/arm64-v8a/libtalloc.so
+5cea8dda1e0a4db56b51931019f680966051b9bd69b8461654b93f2e4bc34095  app/src/main/assets/ubuntu-rootfs.tar.gz
+
+# Termux source packages used to extract the native files
+0da3a24d558b93c92bcf8d611e0826a99ff96e396b148e6cdf33b47c47c57ff6  libandroid-shmem_0.7_aarch64.deb
+1ad09f7ddf65f297a7b59a398cd1f23a48748b1144b225f0c1e2d9f447ef3efc  proot_5.1.107.91_aarch64.deb
+ac81ad623d74c209718b9f3acb2dd702cc8a88c431e820d212229910b4db29da  libtalloc_2.4.3_aarch64.deb

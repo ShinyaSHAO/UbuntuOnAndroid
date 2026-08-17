@@ -1,5 +1,8 @@
 package com.example.ubuntuonandroid
 
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.Network
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -23,6 +26,17 @@ import kotlin.concurrent.thread
 
 class MainActivity : ComponentActivity() {
 
+    private var networkCallbackRegistered = false
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            NetworkEnvironmentConfigurator.updateDns(this@MainActivity)
+        }
+
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) {
+            NetworkEnvironmentConfigurator.updateDns(this@MainActivity)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -33,6 +47,27 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val connectivityManager = getSystemService(ConnectivityManager::class.java)
+        if (!networkCallbackRegistered) {
+            connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            networkCallbackRegistered = true
+        }
+        thread(name = "ubuntu-dns-sync") {
+            NetworkEnvironmentConfigurator.updateDns(this@MainActivity)
+        }
+    }
+
+    override fun onStop() {
+        if (networkCallbackRegistered) {
+            val connectivityManager = getSystemService(ConnectivityManager::class.java)
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+            networkCallbackRegistered = false
+        }
+        super.onStop()
     }
 
     @Composable
@@ -130,8 +165,8 @@ class MainActivity : ComponentActivity() {
 
                 EnvironmentInstaller.ensureStartScript(context)
                 val prootBinary = File(context.applicationInfo.nativeLibraryDir, "libproot.so").absolutePath
-                val rootfs = File(context.filesDir, "ubuntu-fs").absolutePath
-                val tmpDir = File(context.filesDir, "tmp").absolutePath
+                val rootfs = EnvironmentPaths.rootfsDir(context).absolutePath
+                val tmpDir = EnvironmentPaths.tmpDir(context).absolutePath
                 
                 File(tmpDir).mkdirs()
                 File(rootfs, "tmp").mkdirs()
@@ -163,7 +198,7 @@ class MainActivity : ComponentActivity() {
                 
                 val session = TerminalSession(
                     executablePath,
-                    context.filesDir.absolutePath,
+                    EnvironmentPaths.baseDir(context).absolutePath,
                     args,
                     env,
                     250,

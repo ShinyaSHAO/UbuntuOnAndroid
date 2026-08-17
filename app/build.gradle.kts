@@ -4,6 +4,51 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+abstract class GenerateLegalAssetsTask : DefaultTask() {
+    @get:InputFiles
+    abstract val documents: ConfigurableFileCollection
+
+    @get:InputDirectory
+    abstract val licensesDirectory: DirectoryProperty
+
+    @get:InputDirectory
+    abstract val sbomDirectory: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val output = outputDirectory.get().asFile
+        output.deleteRecursively()
+        val legal = output.resolve("legal").apply { mkdirs() }
+
+        documents.files.forEach { source ->
+            source.copyTo(legal.resolve(source.name), overwrite = true)
+        }
+        licensesDirectory.get().asFile.copyRecursively(
+            legal.resolve("licenses"),
+            overwrite = true,
+        )
+        sbomDirectory.get().asFile.copyRecursively(
+            legal.resolve("sbom"),
+            overwrite = true,
+        )
+    }
+}
+
+val generateLegalAssets by tasks.registering(GenerateLegalAssetsTask::class) {
+    documents.from(
+        rootProject.file("LICENSE"),
+        rootProject.file("PRIVACY.md"),
+        rootProject.file("SOURCE_CODE.md"),
+        rootProject.file("THIRD_PARTY_NOTICES.md"),
+    )
+    licensesDirectory.set(rootProject.layout.projectDirectory.dir("licenses"))
+    sbomDirectory.set(rootProject.layout.projectDirectory.dir("sbom"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/legalAssets"))
+}
+
 android {
     namespace = "com.example.ubuntuonandroid"
     compileSdk = 36
@@ -41,10 +86,14 @@ android {
       shaders = false
     }
 
-    packaging {
-      resources {
-        excludes += "/META-INF/{AL2.0,LGPL2.1}"
-      }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            generateLegalAssets,
+            GenerateLegalAssetsTask::outputDirectory,
+        )
     }
 }
 
