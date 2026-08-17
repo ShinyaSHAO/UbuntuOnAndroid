@@ -14,8 +14,8 @@ UbuntuOnAndroid 不提供账号系统，不集成广告、分析 SDK、崩溃上
 ## 网络连接
 
 - `/etc/resolv.conf` 使用 Android 当前活动网络提供的 DNS 服务器。DNS 查询可能由网络运营商、Wi-Fi 提供方或 VPN 服务商处理。
-- APT 默认配置为 Canonical 的 Ubuntu Ports HTTPS 服务 `https://ports.ubuntu.com/ubuntu-ports/`。只有在用户运行 `apt` 等联网命令时才会访问该服务。
-- 用户可以主动运行 `ubuntuonandroid-set-mirror tencent` 切换到腾讯云镜像；该操作会把后续 APT 请求发送给腾讯云。运行 `ubuntuonandroid-set-mirror official` 可恢复官方镜像。
+- APT 默认配置为腾讯云 Ubuntu Ports HTTPS 镜像 `https://mirrors.tencent.com/ubuntu-ports/`。只有在用户运行 `apt` 等联网命令时才会访问该服务。
+- 用户可以主动运行 `ubuntuonandroid-set-mirror official` 切换到 Canonical 官方镜像；该操作会把后续 APT 请求发送给 Canonical。运行 `ubuntuonandroid-set-mirror tencent` 可恢复默认腾讯云镜像。
 - 用户在 Ubuntu 终端中运行的 `ssh`、`curl`、浏览器、包管理器或其他程序可能连接相应第三方服务，其数据处理规则由用户选择的软件和服务决定。
 - 内置 SSH 服务只接受到设备的连接；应用不会自动连接项目维护者的服务器。
 

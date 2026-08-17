@@ -27,4 +27,24 @@ class NetworkEnvironmentConfiguratorTest {
             NetworkEnvironmentConfigurator.renderResolvConf(emptyList())
         )
     }
+
+    @Test
+    fun migrationReplacesOnlyBlankOrPreviousOfficialSources() {
+        assertTrue(NetworkEnvironmentConfigurator.shouldUseDefaultTencentMirror(""))
+        assertTrue(
+            NetworkEnvironmentConfigurator.shouldUseDefaultTencentMirror(
+                "deb https://ports.ubuntu.com/ubuntu-ports/ jammy main"
+            )
+        )
+        assertFalse(
+            NetworkEnvironmentConfigurator.shouldUseDefaultTencentMirror(
+                "deb https://mirrors.tencent.com/ubuntu-ports/ jammy main"
+            )
+        )
+        assertFalse(
+            NetworkEnvironmentConfigurator.shouldUseDefaultTencentMirror(
+                "deb https://example.com/custom-ubuntu/ jammy main"
+            )
+        )
+    }
 }

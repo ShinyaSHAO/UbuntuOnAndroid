@@ -10,7 +10,7 @@ UbuntuOnAndroid 是一个无需 Root 权限即可在 Android 设备上运行 Ubu
 - 内置 Ubuntu 22.04.5 LTS ARM64 rootfs，首次启动自动部署，后续启动保留环境和用户数据。
 - 集成可追溯的 Termux PRoot 5.1.107.91、PRoot Loader、talloc 2.4.3 和 libandroid-shmem 0.7 官方 ARM64 产物。
 - 使用 Termux `TerminalView` 提供 `xterm-256color` 交互终端。
-- 默认使用 Ubuntu Ports 官方 HTTPS 软件源；可通过命令显式切换镜像。
+- 默认使用腾讯云 Ubuntu Ports HTTPS 镜像；可通过命令切换到 Canonical 官方源并随时恢复。
 - DNS 跟随 Android 当前活动网络，不内置公共 DNS 地址。
 - Ubuntu 环境保存在 `noBackupFilesDir`，并禁用 Android 应用备份。
 - 预装 OpenSSH Server 8.9p1，进入交互终端时自动尝试监听 `2222` 端口。
@@ -38,7 +38,7 @@ flowchart TD
 2. 通过 Java `GZIPInputStream` 解压为临时 TAR 文件。
 3. 调用 Android 的 `/system/bin/tar` 将 rootfs 释放到不可备份目录 `no_backup/ubuntu-fs`。
 4. 检查 `ubuntu-fs/bin/bash`，生成 `no_backup/start-ubuntu.sh`。
-5. 配置 Ubuntu Ports 官方 APT 镜像，并将 Android 当前网络的 DNS 写入 `ubuntu-fs/etc/resolv.conf`。
+5. 配置腾讯云 Ubuntu Ports APT 镜像，并将 Android 当前网络的 DNS 写入 `ubuntu-fs/etc/resolv.conf`。
 
 从旧版本升级时，现有 `files/ubuntu-fs` 会在同一应用沙盒内迁移到 `noBackupFilesDir`，不会重新部署或覆盖用户数据。网络切换后，应用会重新同步 Android 提供的 DNS 服务器。
 
@@ -99,24 +99,24 @@ apt update
 apt install -y curl git vim htop
 ```
 
-默认 APT 软件源为 Canonical 的 Ubuntu Ports：
+默认 APT 软件源为腾讯云 Ubuntu Ports 镜像：
 
 ```text
-https://ports.ubuntu.com/ubuntu-ports/
+https://mirrors.tencent.com/ubuntu-ports/
 ```
 
 应用提供受限的镜像切换命令，切换后运行 `apt update`：
 
 ```bash
-ubuntuonandroid-set-mirror tencent
+ubuntuonandroid-set-mirror official
 apt update
 
-# 恢复官方镜像
-ubuntuonandroid-set-mirror official
+# 恢复默认腾讯云镜像
+ubuntuonandroid-set-mirror tencent
 apt update
 ```
 
-腾讯云镜像仅在用户显式执行切换命令后使用。相关网络与数据处理说明见 [PRIVACY.md](PRIVACY.md)。安装后的 rootfs 位于 Android 应用不可备份的私有目录，应用重启后修改仍会保留。
+如需使用 Canonical 官方镜像，可显式执行上述 `official` 切换命令。相关网络与数据处理说明见 [PRIVACY.md](PRIVACY.md)。安装后的 rootfs 位于 Android 应用不可备份的私有目录，应用重启后修改仍会保留；升级时不会覆盖用户配置的其他第三方 APT 源。
 
 ## SSH 连接
 

@@ -10,11 +10,11 @@ object NetworkEnvironmentConfigurator {
     private const val TAG = "NetworkEnvConfig"
     private const val OFFICIAL_MIRROR = "https://ports.ubuntu.com/ubuntu-ports/"
     private const val TENCENT_MIRROR = "https://mirrors.tencent.com/ubuntu-ports/"
-    private const val CONFIG_VERSION = "2"
+    private const val CONFIG_VERSION = "3"
 
     fun installDefaults(context: Context) {
         val rootfs = EnvironmentPaths.rootfsDir(context)
-        writeAptSources(rootfs, OFFICIAL_MIRROR)
+        writeAptSources(rootfs, TENCENT_MIRROR)
         writeMirrorHelper(rootfs)
         writeVersionMarker(rootfs)
         updateDns(context)
@@ -29,8 +29,8 @@ object NetworkEnvironmentConfigurator {
         if (marker.readTextOrNull()?.trim() != CONFIG_VERSION) {
             val sources = File(rootfs, "etc/apt/sources.list")
             val current = sources.readTextOrNull().orEmpty()
-            if (current.isBlank() || current.contains("mirrors.tencent.com/ubuntu-ports")) {
-                writeAptSources(rootfs, OFFICIAL_MIRROR)
+            if (shouldUseDefaultTencentMirror(current)) {
+                writeAptSources(rootfs, TENCENT_MIRROR)
             }
             writeVersionMarker(rootfs)
         }
@@ -69,6 +69,9 @@ object NetworkEnvironmentConfigurator {
             dnsServers.forEach { appendLine("nameserver $it") }
         }
     }
+
+    internal fun shouldUseDefaultTencentMirror(currentSources: String): Boolean =
+        currentSources.isBlank() || currentSources.contains("ports.ubuntu.com/ubuntu-ports")
 
     private fun writeAptSources(rootfs: File, mirror: String) {
         val sources = File(rootfs, "etc/apt/sources.list")
